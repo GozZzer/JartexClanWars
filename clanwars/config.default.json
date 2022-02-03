@@ -1,0 +1,10 @@
+{
+  "token": "YOUR TOKEN IN HERE",
+  "database": {
+    "host": "HOST OF THE POSTGRES SERVER",
+    "port": 5432,
+    "user": "USER OF THE POSTGRES SERVER",
+    "password": "PASSWORD OF THE POSTGRES SERVER",
+    "database": "DATABASE OF THE POSTGRES SERVER"
+  }
+}
