@@ -20,35 +20,10 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-import hikari
-import tanjun
-from hikari import traits as hikari_traits
+__all__ = [
+    "get_config",
+    "Database"
+]
 
-from clanwars.utils import get_config, Database
-
-INTENTS = hikari.Intents.GUILDS | hikari.Intents.ALL_MESSAGES
-
-
-def build_gateway_bot() -> tuple[hikari.impl.GatewayBot, tanjun.Client]:
-    bot = hikari.GatewayBot(
-        get_config()["token"],
-        intents=INTENTS,
-    )
-    return bot, build_from_gateway_bot(bot)
-
-
-def build_from_gateway_bot(
-        bot: hikari_traits.GatewayBotAware) -> tanjun.Client:
-    db = Database()
-    client = (tanjun.Client.from_gateway_bot(
-        bot, declare_global_commands=894305669396697089,
-        mention_prefix=False)
-              .set_type_dependency(Database, db)
-              .add_client_callback(tanjun.ClientCallbackNames.STARTING, db.create_database_pool)
-              .load_modules("clanwars.modules"))
-    return client
-
-
-def run_gateway_bot() -> None:
-    bot, client = build_gateway_bot()
-    bot.run()
+from .setup import get_config
+from .database import Database

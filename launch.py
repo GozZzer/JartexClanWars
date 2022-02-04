@@ -20,3 +20,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
+from clanwars import run_gateway_bot
+
+run_gateway_bot()
+
