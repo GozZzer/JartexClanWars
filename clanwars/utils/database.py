@@ -29,7 +29,7 @@ import asyncpg
 from clanwars.utils import get_config
 
 
-def _extract_values(data: dict):
+def extract_values(data: dict):
     values = {}
     conditions = {}
     for key in data:
@@ -38,6 +38,56 @@ def _extract_values(data: dict):
         else:
             conditions[key] = data[key]
     return values, conditions
+
+
+def query_update_value(table, column, value, **conditions):
+    exe = f"UPDATE {table} SET {column}=\'{value}\' WHERE"
+    for key in conditions:
+        exe += f" {key}=\'{conditions[key]}\' AND"
+    return exe[:-4]
+
+
+def query_update_values(table, **kwargs):
+    values, conditions = extract_values(kwargs)
+    exe = f"UPDATE {table} SET"
+    for key in values:
+        exe += f" {key}=\'{values[key]}\',"
+    exe = exe[:-1] + " WHERE"
+    for key in conditions:
+        exe += f" {key}=\'{conditions[key]}\' AND"
+    return exe[:-4]
+
+
+def query_insert_into(table, **values):
+    exe = f"INSERT INTO {table}("
+    exe2 = f" VALUES ("
+    for key in values:
+        exe += f"{key}, "
+        if isinstance(values[key], str):
+            exe2 += f"\'{values[key]}\', "
+        else:
+            exe2 += f"{values[key]}, "
+    exe = exe[:-2] + ")"
+    exe += exe2[:-2] + ")"
+    return exe
+
+
+def query_select(table, *select, **conditions):
+    if select[0] == "*":
+        exe = f"SELECT * FROM {table} WHERE"
+    else:
+        exe = f"SELECT ({', '.join(select)}) FROM {table} WHERE"
+    for key in conditions:
+        exe += f" {key}=\'{conditions[key]}\' AND"
+    return exe[:-4]
+
+
+def query_create_table(table, pk, **columns):
+    exe = f"CREATE TABLE {table} ("
+    for col in columns:
+        exe += f"{col} {columns[col]},"
+    exe += f" PRIMARY KEY ({pk}))"
+    return exe
 
 
 class Database:
@@ -84,42 +134,20 @@ class Database:
     async def _fetch(self, exe, *args):
         async with self.pool.acquire() as connection:
             return await connection.fetch(exe, *args)
+        # asyncpg.exceptions.UndefinedColumnError
+        # asyncpg.exceptions.UndefinedTableError
 
     async def update_value(self, table, column, value, **conditions):
-        exe = f"UPDATE {table} SET {column}=\'{value}\' WHERE"
-        for key in conditions:
-            exe += f" {key}=\'{conditions[key]}\' AND"
-        await self._execute(exe[:-4])
+        await self._execute(query_update_value(table, column, value, **conditions))
 
     async def update_values(self, table, **kwargs):
-        values, conditions = _extract_values(kwargs)
-        exe = f"UPDATE {table} SET"
-        for key in values:
-            exe += f" {key}=\'{values[key]}\',"
-        exe = exe[:-1] + " WHERE"
-        for key in conditions:
-            exe += f" {key}=\'{conditions[key]}\' AND"
-        await self._execute(exe[:-4])
+        await self._execute(query_update_values(table, **kwargs))
 
     async def insert_into(self, table, **values):
-        exe = f"INSERT INTO {table} SET"
-        for key in values:
-            exe += f" {key}=\'{values[key]}\',"
-        await self._execute(exe[:-1])
+        await self._execute(query_insert_into(table, **values))
 
     async def select(self, table, *select, **conditions):
-        if select[0] == "*":
-            exe = f"SELECT * FROM {table} WHERE"
-        else:
-            exe = f"SELECT ({', '.join(select)}) FROM {table} WHERE"
-        for key in conditions:
-            exe += f" {key}=\'{conditions[key]}\' AND"
-        return await self._fetch(exe[:-4])
+        return await self._fetch(query_select(table, *select, **conditions))
 
     async def create_table(self, table, pk, **columns):
-        exe = f"CREATE TABLE {table} ("
-        for col in columns:
-            exe += f"{col} {columns[col]},"
-        exe += f" PRIMARY KEY ({pk}))"
-        await self._execute(exe)
-
+        await self._execute(query_create_table(table, pk, **columns))
