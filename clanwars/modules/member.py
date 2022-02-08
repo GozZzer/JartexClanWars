@@ -22,7 +22,7 @@
 import asyncpg
 import tanjun
 
-from clanwars.utils import Database
+from clanwars.utils import Database, respond
 
 
 @tanjun.with_guild_check()
@@ -32,17 +32,19 @@ async def register_command(
         ctx: tanjun.SlashContext,
         ign: str,
         db: Database = tanjun.inject(type=Database)):
-    try:
-        await db.insert_into("member", member_id=ctx.author.id, ign=ign)
-    except asyncpg.exceptions.UniqueViolationError as e:
-        if str(e).split("(")[1][:-2] == "member_id":
-            await ctx.respond(f"You are already registered")
-            return
-        if str(e).split("(")[1][:-2] == "ign":
-            await ctx.respond(f"The Ingame-Name is already registered")
-            return
-        await ctx.respond(f"An unexpected error occurred")
-        raise e
+    insert = await db.insert_into("member", member_id=ctx.author.id, ign=ign)
+    if insert is True:
+        await respond(ctx, "Your clan got created", "approved")
+    elif insert == "member_id":
+        await respond(ctx, "You are already registered", "error")
+    elif insert == "ign":
+        await respond(ctx, "The Ingame-Name is already registered", "error")
+    elif isinstance(insert, Exception):
+        await respond(
+            ctx,
+            "An unexpected error occurred",
+            "unexpected_error",
+            f"**Who:**{ctx.author.mention}\n**Command:**/register `ign:{ign}`\n**Channel:**{ctx.get_channel().mention}\n{str(insert)}")
 
 
 member_loader = tanjun.Component(name="member", strict=True).load_from_scope().make_loader()

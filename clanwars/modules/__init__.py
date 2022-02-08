@@ -22,8 +22,10 @@
 
 __all__ = [
     "member_loader",
-    "testing_loader"
+    "testing_loader",
+    "clan_loader"
 ]
 
 from .member import member_loader
 from .testing import testing_loader
+from .clan import clan_loader

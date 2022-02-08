@@ -19,15 +19,27 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
+import tanjun
 
-__all__ = [
-    "get_config",
-    "Database",
-    "respond", "send", "embed",
-    "Channels", "User"
-]
+from clanwars.utils import Database
 
-from .setup import get_config
-from .database import Database
-from .message import respond, send, embed
-from .ids import Channels, User
+
+async def is_not_clan_owner(
+        ctx: tanjun.abc.Context,
+        db: Database = tanjun.inject(type=Database)):
+    check = await db.select("clan", "name", owner_id=ctx.author.id)
+    if check:
+        raise tanjun.CommandError("You already own a clan")
+    else:
+        return True
+
+
+async def is_clan_owner(
+        ctx: tanjun.abc.Context,
+        db: Database = tanjun.inject(type=Database)):
+    check = await db.select("clan", "name", owner_id=ctx.author.id)
+    if check:
+        return True
+    else:
+        raise tanjun.CommandError("You do not own a clan")
+

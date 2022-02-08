@@ -24,9 +24,9 @@ import hikari
 import tanjun
 from hikari import traits as hikari_traits
 
-from clanwars.utils import get_config, Database
+from clanwars.utils import get_config, Database, Channels, User
 
-INTENTS = hikari.Intents.GUILDS | hikari.Intents.ALL_MESSAGES
+INTENTS = hikari.Intents.GUILDS | hikari.Intents.ALL_MESSAGES | hikari.Intents.GUILD_MEMBERS
 
 
 def build_gateway_bot() -> tuple[hikari.impl.GatewayBot, tanjun.Client]:
@@ -40,10 +40,15 @@ def build_gateway_bot() -> tuple[hikari.impl.GatewayBot, tanjun.Client]:
 def build_from_gateway_bot(
         bot: hikari_traits.GatewayBotAware) -> tanjun.Client:
     db = Database()
+    channel = Channels()
+    users = User()
     client = (tanjun.Client.from_gateway_bot(
         bot, declare_global_commands=894305669396697089,
+        # bot, declare_global_commands=True,
         mention_prefix=False)
               .set_type_dependency(Database, db)
+              .set_type_dependency(Channels, channel)
+              .set_type_dependency(User, users)
               .add_client_callback(tanjun.ClientCallbackNames.STARTING, db.create_database_pool)
               .load_modules("clanwars.modules"))
     return client

@@ -20,14 +20,9 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-__all__ = [
-    "get_config",
-    "Database",
-    "respond", "send", "embed",
-    "Channels", "User"
-]
+class Channels:
+    ERROR_CHANNEL = 939276745046110208
 
-from .setup import get_config
-from .database import Database
-from .message import respond, send, embed
-from .ids import Channels, User
+
+class User:
+    BOT = 894899910137241640

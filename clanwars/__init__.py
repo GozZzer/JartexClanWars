@@ -20,6 +20,8 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-__all__ = ["run_gateway_bot"]
+__all__ = [
+    "run_gateway_bot"
+]
 
 from .bot import run_gateway_bot
