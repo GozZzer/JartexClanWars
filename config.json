@@ -1,9 +1,9 @@
 {
-    "token": "Discord-Token",
+    "token": "Discord-Bot-Token",
     "database": {
         "host": "hostname",
-        "name": "clanwars",
-        "user": "gozzzer",
+        "name": "databasename",
+        "user": "username",
         "password": "password"
     }
 }
