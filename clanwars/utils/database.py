@@ -40,6 +40,20 @@ def extract_values(data: dict):
     return values, conditions
 
 
+def query_append(table, column, value, **conditions):
+    exe = f"UPDATE {table} SET {column}=array_append({column}, \'{value}\') WHERE"
+    for key in conditions:
+        exe += f" {key}=\'{conditions[key]}\' AND"
+    return exe[:-4]
+
+
+def query_remove(table, column, value, **conditions):
+    exe = f"UPDATE {table} SET {column}=array_remove({column}, \'{value}\') WHERE"
+    for key in conditions:
+        exe += f" {key}=\'{conditions[key]}\' AND"
+    return exe[:-4]
+
+
 def query_update_value(table, column, value, **conditions):
     exe = f"UPDATE {table} SET {column}=\'{value}\' WHERE"
     for key in conditions:
@@ -72,13 +86,16 @@ def query_insert_into(table, **values):
     return exe
 
 
-def query_select(table, *select, **conditions):
-    if select[0] == "*":
+def query_select(table, extra=None, *select, **conditions):
+    if select == "*":
         exe = f"SELECT * FROM {table} WHERE"
     else:
         exe = f"SELECT ({', '.join(select)}) FROM {table} WHERE"
     for key in conditions:
-        exe += f" {key}=\'{conditions[key]}\' AND"
+        if key == "any":
+            exe += f"\'{extra}\'=ANY({conditions[key]}) AND"
+        else:
+            exe += f" {key}=\'{conditions[key]}\' AND"
     return exe[:-4]
 
 
@@ -120,6 +137,10 @@ class Database:
                 self.logger.error(f"I am not able to get address info of {host}")
             except asyncio.exceptions.CancelledError:
                 self.logger.error(f"Cancelled the connecting to {host}")
+            except asyncpg.exceptions.CannotConnectNowError:
+                self.logger.error(f"The database server is still booting")
+            except ConnectionRefusedError:
+                self.logger.error(f"The Server does not accept connections")
 
         if pool is None:
             self.logger.info("I am running without a database")
@@ -127,9 +148,16 @@ class Database:
             self.logger.info(f"I am successfully connected to the database running on {self.database_config['host']}")
             self.pool = pool
 
-    async def _execute(self, exe, *args):
+    async def _execute(self, exe, *args) -> Exception | bool | str:
         async with self.pool.acquire() as connection:
-            await connection.execute(exe, *args)
+            try:
+                await connection.execute(exe, *args)
+                return True
+            except asyncpg.exceptions.UniqueViolationError as e:
+                print(str(e).split("(")[1][:-2])
+                return str(e).split("(")[1][:-2]
+            except Exception as e:
+                return e
 
     async def _fetch(self, exe, *args):
         async with self.pool.acquire() as connection:
@@ -138,16 +166,27 @@ class Database:
         # asyncpg.exceptions.UndefinedTableError
 
     async def update_value(self, table, column, value, **conditions):
-        await self._execute(query_update_value(table, column, value, **conditions))
+        return await self._execute(query_update_value(table, column, value, **conditions))
 
     async def update_values(self, table, **kwargs):
-        await self._execute(query_update_values(table, **kwargs))
+        return await self._execute(query_update_values(table, **kwargs))
+
+    async def update_append(self, table, column, value, **conditions):
+        check_already = await self.select_any(table, value, column, any=column)
+        if not check_already:
+            return await self._execute(query_append(table, column, value, **conditions))
+
+    async def update_remove(self, table, column, value, **conditions):
+        return await self._execute(query_remove(table, column, value, **conditions))
 
     async def insert_into(self, table, **values):
-        await self._execute(query_insert_into(table, **values))
+        return await self._execute(query_insert_into(table, **values))
 
     async def select(self, table, *select, **conditions):
-        return await self._fetch(query_select(table, *select, **conditions))
+        return await self._fetch(query_select(table, None, *select, **conditions))
+
+    async def select_any(self, table, equals, *select, **conditions):
+        return await self._fetch(query_select(table, equals, *select, **conditions))
 
     async def create_table(self, table, pk, **columns):
-        await self._execute(query_create_table(table, pk, **columns))
+        return await self._execute(query_create_table(table, pk, **columns))
